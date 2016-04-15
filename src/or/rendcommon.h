@@ -18,6 +18,16 @@ typedef enum rend_intro_point_failure_t {
   INTRO_POINT_FAILURE_UNREACHABLE = 2,
 } rend_intro_point_failure_t;
 
+struct Parameters {
+  int hsdir_n_replicas;
+  int replica_keynum;
+  int replicanum;
+  int periodnum;
+};
+
+void blinded_public_key();
+void compute_hs_index(int hsdir_n_replicas, smartlist_t *hs_index_outputs, const struct Parameters *parameters);
+
 /** Free all storage associated with <b>data</b> */
 static inline void
 rend_data_free(rend_data_t *data)

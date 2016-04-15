@@ -22,6 +22,24 @@
 #include "routerparse.h"
 #include "networkstatus.h"
 
+struct Parameters {
+  int hsdir_n_replicas;
+  int replica_keynum;
+  int replicanum;
+  int periodnum;
+};
+
+void blinded_public_key();
+void compute_hs_index(int hsdir_n_replicas, smartlist_t *hs_index_outputs, const struct Parameters *parameters) {
+    for (int i = 0; i < hsdir_n_replicas; i++){
+        char *index_out;
+        const char *blinded_key = blinded_public_key(parameters->replica_keynum) 
+        const char *message = "store-at-idx" | blinded_key | parameters->replicanum | parameters->periodnum;
+        crypto_digest256(index_out, const char *message, strlen(message), DIGEST_SHA3_256);
+        smartlist_add(hs_index_outputs, index_out);
+    }
+}
+
 /** Return 0 if one and two are the same service ids, else -1 or 1 */
 int
 rend_cmp_service_ids(const char *one, const char *two)
