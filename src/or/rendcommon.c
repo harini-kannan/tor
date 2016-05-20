@@ -24,63 +24,34 @@
 #include "../common/crypto.h"
 #include "../common/crypto_ed25519.h"
 
-/** Return 0 on success, 1 on failure. **/
-int compute_hs_index(int hsdir_n_replicas, smartlist_t *hs_index_outputs, const struct Parameters *parameters, ed25519_public_key_t *input_public_key) {
-    for (int i = 0; i < hsdir_n_replicas; i++) {
-        char *index_out;
-        ed25519_public_key_t *blinded_public_key;
-        int result = compute_blinded_public_key(blinded_public_key, input_public_key);
-        if (result == 1) {
-            return 1;
-        }
-        const char *message = concat_message(parameters, blinded_public_key);
-        result = crypto_digest256(index_out, message, concat_size, DIGEST_SHA3_256);
-        if (result == 0) {
-            // Hash succeeded.
-            smartlist_add(hs_index_outputs, index_out);
-        } else {
-            // Catch error.
-            return 1;
-        }
-    }
-    return 0;
-}
+#define PREFIX_STRING "store-at-idx"
+#define PREFIX_STRING_LEN 12
+#define REPLICA_NUM_LEN 1
+#define PERIOD_NUM_LEN 1
 
-int * concat_message(const struct Parameters *parameters, ed25519_public_key_t *blinded_public_key) {
-    // "store-at-idx" is 12 bytes. blinded public key is 32 bytes. replicanum is 1 byte. periodnum is 1 byte. concat_size is 46.
-    char* prefix_string = "store-at-idx";
-    char* prefix_string_length = 12;
-    int replicanum_length = 1;
-    int periodnum_length = 1;
-    int concat_size = prefix_string_length + ED25519_PUBKEY_LEN + replicanum_length + periodnum_length;
-    char concatenated_input[concat_size];
-    
-    for (int i=0; i < prefix_string_length; i++) {
-        concatenated_input[i] = prefix_string[i];
-    }
-    for (int i=0; i < ED25519_PUBKEY_LEN; i++) {
-        concatenated_input[prefix_string_length + i] = (char) blinded_public_key->pubkey[i];
-    }
-    concatenated_input[prefix_string_length + ED25519_PUBKEY_LEN] = (char) parameters->replicanum;
-    concatenated_input[prefix_string_length + ED25519_PUBKEY_LEN + replicanum_length] = (char) parameters->periodnum_length;
-
-    return concatenated_input;
-}
-
-uint8_t * get_basepoint(int basepoint_len) {
-    uint8_t basepoint[basepoint_len];
+void get_basepoint(int basepoint_len, uint8_t* basepoint) {
     for (int i=0; i < basepoint_len; i++) {
         basepoint[i] = 0;
     }
-    return basepoint;
 }
 
-uint8_t * get_shared_random_value(int shared_random_value_len) {
-    uint8_t shared_random_value[shared_random_value_len];
+void get_shared_random_value(int shared_random_value_len, uint8_t* shared_random_value) {
     for (int i=0; i < shared_random_value_len; i++) {
         shared_random_value[i] = 0;
     }
-    return shared_random_value;
+}
+
+void concat_message(const struct Parameters *parameters, ed25519_public_key_t *blinded_public_key, char* message) {
+    // "store-at-idx" is 12 bytes. blinded public key is 32 bytes. replicanum is 1 byte. periodnum is 1 byte. concat_size is 46.
+    
+    for (int i=0; i < PREFIX_STRING_LEN; i++) {
+        message[i] = PREFIX_STRING[i];
+    }
+    for (int i=0; i < ED25519_PUBKEY_LEN; i++) {
+        message[PREFIX_STRING_LEN + i] = (char) blinded_public_key->pubkey[i];
+    }
+    message[PREFIX_STRING_LEN + ED25519_PUBKEY_LEN] = (char) parameters->replicanum;
+    message[PREFIX_STRING_LEN + ED25519_PUBKEY_LEN + REPLICA_NUM_LEN] = (char) parameters->periodnum;
 }
 
 int compute_blinded_public_key(ed25519_public_key_t *blinded_public_key, ed25519_public_key_t *input_public_key) {
@@ -89,8 +60,11 @@ int compute_blinded_public_key(ed25519_public_key_t *blinded_public_key, ed25519
     int shared_random_value_len = 32;
     int concat_size = ED25519_PUBKEY_LEN + basepoint_len + shared_random_value_len;
 
-    uint8_t basepoint[basepoint_len] = get_basepoint(basepoint_len);
-    uint8_t shared_random_value[shared_random_value_len] = get_shared_random_value(shared_random_value_len);
+    uint8_t basepoint[basepoint_len];
+    get_basepoint(basepoint_len, basepoint);
+
+    uint8_t shared_random_value[shared_random_value_len];
+    get_shared_random_value(shared_random_value_len, shared_random_value);
 
     char concatenated_input[concat_size];
     for (int i=0; i < ED25519_PUBKEY_LEN; i++) {
@@ -104,7 +78,7 @@ int compute_blinded_public_key(ed25519_public_key_t *blinded_public_key, ed25519
     }
 
     const char *message = concatenated_input;
-    char *param_out;
+    char *param_out = NULL;
 
     int result = crypto_digest256(param_out, message, concat_size, DIGEST_SHA3_256);
 
@@ -118,9 +92,36 @@ int compute_blinded_public_key(ed25519_public_key_t *blinded_public_key, ed25519
         blinding_param[i] = (uint8_t) param_out[i];
     }
 
-    int key_blind_result = ed25519_public_blind(blinded_public_key, input_public_key, blinding_param)
+    int key_blind_result = ed25519_public_blind(blinded_public_key, input_public_key, blinding_param);
     if (key_blind_result == -1) { // catch error
         return 1;
+    }
+    return 0;
+}
+
+
+/** Return 0 on success, 1 on failure. **/
+int compute_hs_index(int hsdir_n_replicas, smartlist_t *hs_index_outputs, const struct Parameters *parameters, ed25519_public_key_t *input_public_key) {
+    for (int i = 0; i < hsdir_n_replicas; i++) {
+        ed25519_public_key_t *blinded_public_key = NULL;
+        int result = compute_blinded_public_key(blinded_public_key, input_public_key);
+        if (result == 1) {
+            return 1;
+        }
+
+        int concat_size = PREFIX_STRING_LEN + ED25519_PUBKEY_LEN + REPLICA_NUM_LEN + PERIOD_NUM_LEN;
+        char message[concat_size];
+        concat_message(parameters, blinded_public_key, message);
+
+        char *index_out = NULL;
+        result = crypto_digest256(index_out, message, concat_size, DIGEST_SHA3_256);
+        if (result == 0) {
+            // Hash succeeded.
+            smartlist_add(hs_index_outputs, index_out);
+        } else {
+            // Catch error.
+            return 1;
+        }
     }
     return 0;
 }
