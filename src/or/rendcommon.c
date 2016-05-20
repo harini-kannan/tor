@@ -21,6 +21,8 @@
 #include "routerlist.h"
 #include "routerparse.h"
 #include "networkstatus.h"
+#include "common/crypto.h"
+#include "common/crypto_ed25519.h"
 
 struct Parameters {
   int hsdir_n_replicas;
@@ -29,15 +31,44 @@ struct Parameters {
   int periodnum;
 };
 
-void blinded_public_key();
-void compute_hs_index(int hsdir_n_replicas, smartlist_t *hs_index_outputs, const struct Parameters *parameters) {
-    for (int i = 0; i < hsdir_n_replicas; i++){
+/** Return 0 on success, 1 on failure. **/
+int compute_hs_index(int hsdir_n_replicas, smartlist_t *hs_index_outputs, const struct Parameters *parameters) {
+    for (int i = 0; i < hsdir_n_replicas; i++) {
         char *index_out;
-        const char *blinded_key = blinded_public_key(parameters->replica_keynum) 
-        const char *message = "store-at-idx" | blinded_key | parameters->replicanum | parameters->periodnum;
-        crypto_digest256(index_out, const char *message, strlen(message), DIGEST_SHA3_256);
-        smartlist_add(hs_index_outputs, index_out);
+        const ed25519_public_key_t *blinded_public_key;
+
+        const char *message = concat_message(parameters, blinded_public_key);
+        int result = crypto_digest256(index_out, message, concat_size, DIGEST_SHA3_256);
+        if (result == 0) {
+            // Hash succeeded.
+            smartlist_add(hs_index_outputs, index_out);
+        } else {
+            // Catch error.
+            return 1;
+        }
     }
+    return 0;
+}
+
+int * concat_message(const struct Parameters *parameters, ed25519_public_key_t *blinded_public_key) {
+    // "store-at-idx" is 12 bytes. blinded public key is 32 bytes. replicanum is 1 byte. periodnum is 1 byte. concat_size is 46.
+    char* prefix_string = "store-at-idx";
+    char* prefix_string_length = 12;
+    int replicanum_length = 1;
+    int periodnum_length = 1;
+    int concat_size = prefix_string_length + ED25519_PUBKEY_LEN + replicanum_length + periodnum_length;
+    char concatenated_input[concat_size];
+    
+    for (int i=0; i < prefix_string_length; i++) {
+        concatenated_input[i] = prefix_string[i];
+    }
+    for (int i=0; i < ED25519_PUBKEY_LEN; i++) {
+        concatenated_input[prefix_string_length + i] = (char) blinded_public_key->pubkey[i];
+    }
+    concatenated_input[prefix_string_length + ED25519_PUBKEY_LEN] = (char) parameters->replicanum;
+    concatenated_input[prefix_string_length + ED25519_PUBKEY_LEN + replicanum_length] = (char) parameters->periodnum_length;
+
+    return concatenated_input;
 }
 
 /** Return 0 if one and two are the same service ids, else -1 or 1 */
