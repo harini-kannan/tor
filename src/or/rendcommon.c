@@ -21,24 +21,20 @@
 #include "routerlist.h"
 #include "routerparse.h"
 #include "networkstatus.h"
-#include "common/crypto.h"
-#include "common/crypto_ed25519.h"
-
-struct Parameters {
-  int hsdir_n_replicas;
-  int replica_keynum;
-  int replicanum;
-  int periodnum;
-};
+#include "../common/crypto.h"
+#include "../common/crypto_ed25519.h"
 
 /** Return 0 on success, 1 on failure. **/
-int compute_hs_index(int hsdir_n_replicas, smartlist_t *hs_index_outputs, const struct Parameters *parameters) {
+int compute_hs_index(int hsdir_n_replicas, smartlist_t *hs_index_outputs, const struct Parameters *parameters, ed25519_public_key_t *input_public_key) {
     for (int i = 0; i < hsdir_n_replicas; i++) {
         char *index_out;
-        const ed25519_public_key_t *blinded_public_key;
-
+        ed25519_public_key_t *blinded_public_key;
+        int result = compute_blinded_public_key(blinded_public_key, input_public_key);
+        if (result == 1) {
+            return 1;
+        }
         const char *message = concat_message(parameters, blinded_public_key);
-        int result = crypto_digest256(index_out, message, concat_size, DIGEST_SHA3_256);
+        result = crypto_digest256(index_out, message, concat_size, DIGEST_SHA3_256);
         if (result == 0) {
             // Hash succeeded.
             smartlist_add(hs_index_outputs, index_out);
@@ -69,6 +65,64 @@ int * concat_message(const struct Parameters *parameters, ed25519_public_key_t *
     concatenated_input[prefix_string_length + ED25519_PUBKEY_LEN + replicanum_length] = (char) parameters->periodnum_length;
 
     return concatenated_input;
+}
+
+uint8_t * get_basepoint(int basepoint_len) {
+    uint8_t basepoint[basepoint_len];
+    for (int i=0; i < basepoint_len; i++) {
+        basepoint[i] = 0;
+    }
+    return basepoint;
+}
+
+uint8_t * get_shared_random_value(int shared_random_value_len) {
+    uint8_t shared_random_value[shared_random_value_len];
+    for (int i=0; i < shared_random_value_len; i++) {
+        shared_random_value[i] = 0;
+    }
+    return shared_random_value;
+}
+
+int compute_blinded_public_key(ed25519_public_key_t *blinded_public_key, ed25519_public_key_t *input_public_key) {
+    // Blinding param is H(A | B | N), where A is the public key, B is the basepoint, and N is the shared random value
+    int basepoint_len = 32;
+    int shared_random_value_len = 32;
+    int concat_size = ED25519_PUBKEY_LEN + basepoint_len + shared_random_value_len;
+
+    uint8_t basepoint[basepoint_len] = get_basepoint(basepoint_len);
+    uint8_t shared_random_value[shared_random_value_len] = get_shared_random_value(shared_random_value_len);
+
+    char concatenated_input[concat_size];
+    for (int i=0; i < ED25519_PUBKEY_LEN; i++) {
+        concatenated_input[i] = (char) blinded_public_key->pubkey[i];
+    }
+    for (int i=0; i < basepoint_len; i++) {
+        concatenated_input[i + ED25519_PUBKEY_LEN] = (char) basepoint[i];
+    }
+    for (int i=0; i < shared_random_value_len; i++) {
+        concatenated_input[i + ED25519_PUBKEY_LEN + basepoint_len] = (char) shared_random_value[i];
+    }
+
+    const char *message = concatenated_input;
+    char *param_out;
+
+    int result = crypto_digest256(param_out, message, concat_size, DIGEST_SHA3_256);
+
+    if (result == 1) { // catch error 
+        return 1;
+    }
+
+    uint8_t blinding_param[32];
+
+    for (int i=0; i < 32; i++) {
+        blinding_param[i] = (uint8_t) param_out[i];
+    }
+
+    int key_blind_result = ed25519_public_blind(blinded_public_key, input_public_key, blinding_param)
+    if (key_blind_result == -1) { // catch error
+        return 1;
+    }
+    return 0;
 }
 
 /** Return 0 if one and two are the same service ids, else -1 or 1 */

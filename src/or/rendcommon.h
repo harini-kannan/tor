@@ -26,7 +26,7 @@ struct Parameters {
 };
 
 void blinded_public_key();
-void compute_hs_index(int hsdir_n_replicas, smartlist_t *hs_index_outputs, const struct Parameters *parameters);
+int compute_hs_index(int hsdir_n_replicas, smartlist_t *hs_index_outputs, const struct Parameters *parameters);
 
 /** Free all storage associated with <b>data</b> */
 static inline void
