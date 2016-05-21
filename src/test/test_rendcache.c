@@ -80,6 +80,23 @@ static void test_compute_blinded_public_key() {
     ;
 }
 
+static void test_compute_hs_index() {
+    int hsdir_n_replicas = 4;
+    smartlist_t *hs_index_outputs = smartlist_new();
+    struct Parameters params = {3, 2, 4, 3};
+    ed25519_public_key_t input_public_key;
+
+    for (int i=0; i < ED25519_PUBKEY_LEN; i++) {
+        input_public_key.pubkey[i] = i;
+    }
+   
+    int result = compute_hs_index(hsdir_n_replicas, hs_index_outputs, &params, &input_public_key);
+
+    tt_int_op(result, OP_EQ, 0); 
+    done:
+    ;
+}
+
 static void
 test_rend_cache_lookup_entry(void *data)
 {

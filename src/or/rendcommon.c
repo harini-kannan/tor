@@ -59,16 +59,15 @@ void concat_message(const struct Parameters *parameters, ed25519_public_key_t *b
 int compute_blinded_public_key(ed25519_public_key_t *blinded_public_key, ed25519_public_key_t *input_public_key) {
     // Blinding param is H(A | B | N), where A is the public key, B is the basepoint, and N is the shared random value
 
-    printf("IN COMPUTE BLINDED PUBLIC KEY\n");
-    int basepoint_len = 32;
-    int shared_random_value_len = 32;
-    int concat_size = ED25519_PUBKEY_LEN + basepoint_len + shared_random_value_len;
+    //int basepoint_len = 32;
+    //int shared_random_value_len = 32;
+    int concat_size = ED25519_PUBKEY_LEN + BASEPOINT_LEN + SHARED_RANDOM_VALUE_LEN;
 
-    uint8_t basepoint[basepoint_len];
-    get_basepoint(basepoint_len, basepoint);
+    uint8_t basepoint[BASEPOINT_LEN];
+    get_basepoint(BASEPOINT_LEN, basepoint);
 
-    uint8_t shared_random_value[shared_random_value_len];
-    get_shared_random_value(shared_random_value_len, shared_random_value);
+    uint8_t shared_random_value[SHARED_RANDOM_VALUE_LEN];
+    get_shared_random_value(SHARED_RANDOM_VALUE_LEN, shared_random_value);
 
     char concatenated_input[concat_size];
     for (int i=0; i < ED25519_PUBKEY_LEN; i++) {
@@ -81,19 +80,15 @@ int compute_blinded_public_key(ed25519_public_key_t *blinded_public_key, ed25519
         concatenated_input[i + ED25519_PUBKEY_LEN + BASEPOINT_LEN] = (char) shared_random_value[i];
     }
 
-    printf("moo\n");
     const char *message = concatenated_input;
     char param_out[DIGEST256_LEN];
 
-    printf("moo2\n");
     int result = crypto_digest256(&param_out, message, concat_size, DIGEST_SHA3_256);
 
-    printf("BEFORE FIRST RETURN STATEMENT");
     if (result == 1) { // catch error 
         return 1;
     }
 
-    printf("AFTER FIRST RETURN STATEMENT\n");
     uint8_t blinding_param[32];
 
     for (int i=0; i < 32; i++) {
@@ -104,7 +99,6 @@ int compute_blinded_public_key(ed25519_public_key_t *blinded_public_key, ed25519
     if (key_blind_result == -1) { // catch error
         return 1;
     }
-    printf("AFTER second RETURN STATEMENT\n");
     return 0;
 }
 
@@ -120,7 +114,7 @@ int compute_hs_index(int hsdir_n_replicas, smartlist_t *hs_index_outputs, const 
 
         int concat_size = PREFIX_STRING_LEN + ED25519_PUBKEY_LEN + REPLICA_NUM_LEN + PERIOD_NUM_LEN;
         char message[concat_size];
-        concat_message(parameters, blinded_public_key, message);
+        concat_message(parameters, &blinded_public_key, message);
 
         char index_out[DIGEST256_LEN];
         result = crypto_digest256(&index_out, message, concat_size, DIGEST_SHA3_256);
