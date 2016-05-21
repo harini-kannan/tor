@@ -18,6 +18,13 @@ typedef enum rend_intro_point_failure_t {
   INTRO_POINT_FAILURE_UNREACHABLE = 2,
 } rend_intro_point_failure_t;
 
+#define PREFIX_STRING "store-at-idx"
+#define PREFIX_STRING_LEN 12
+#define REPLICA_NUM_LEN 1
+#define PERIOD_NUM_LEN 1
+#define BASEPOINT_LEN 32
+#define SHARED_RANDOM_VALUE_LEN 32
+
 struct Parameters {
   int hsdir_n_replicas;
   int replica_keynum;

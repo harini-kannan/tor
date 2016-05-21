@@ -7,6 +7,7 @@
 #include "test.h"
 #define RENDCACHE_PRIVATE
 #include "rendcache.h"
+#include "rendcommon.h"
 #include "router.h"
 #include "routerlist.h"
 #include "config.h"
@@ -38,6 +39,45 @@ mock_rend_data(const char *onion_address)
                                                  DIGEST_LEN));
 
   return rend_query;
+}
+
+static void test_concat_message(void *data) {
+    struct Parameters params = {3, 2, 4, 3};
+
+    ed25519_public_key_t blinded_public_key;
+
+    for (int i=0; i < ED25519_PUBKEY_LEN; i++) {
+        blinded_public_key.pubkey[i] = i;
+    }
+
+    int concat_size = PREFIX_STRING_LEN + ED25519_PUBKEY_LEN + REPLICA_NUM_LEN + PERIOD_NUM_LEN;
+    char message[concat_size];
+    concat_message(&params, &blinded_public_key, message);
+    for (int i=0; i < PREFIX_STRING_LEN; i++) {
+        tt_int_op(message[i], OP_EQ, PREFIX_STRING[i]);
+    }
+    for (int i=0; i < ED25519_PUBKEY_LEN; i++) {
+        tt_int_op(message[PREFIX_STRING_LEN + i], OP_EQ, i);
+    }
+    tt_int_op(message[PREFIX_STRING_LEN + ED25519_PUBKEY_LEN], OP_EQ, params.replicanum);
+    tt_int_op(message[PREFIX_STRING_LEN + ED25519_PUBKEY_LEN + REPLICA_NUM_LEN], OP_EQ, params.periodnum);
+    done:
+    ;
+}
+
+static void test_compute_blinded_public_key() {
+    ed25519_public_key_t input_public_key;
+
+    for (int i=0; i < ED25519_PUBKEY_LEN; i++) {
+        input_public_key.pubkey[i] = i;
+    }
+
+    ed25519_public_key_t blinded_public_key;
+
+    int result = compute_blinded_public_key(&blinded_public_key, &input_public_key);
+    tt_int_op(result, OP_EQ, 0);
+    done:
+    ;
 }
 
 static void
@@ -1223,6 +1263,10 @@ test_rend_cache_validate_intro_point_failure(void *data)
 
 struct testcase_t rend_cache_tests[] = {
   { "init", test_rend_cache_init, 0, NULL, NULL },
+  { "concat_message", test_concat_message, 0,
+    NULL, NULL },
+  { "compute_blinded_key", test_compute_blinded_public_key, 0,
+    NULL, NULL },
   { "decrement_allocation", test_rend_cache_decrement_allocation, 0,
     NULL, NULL },
   { "increment_allocation", test_rend_cache_increment_allocation, 0,
