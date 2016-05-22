@@ -165,7 +165,7 @@ void find_nodes(smartlist_t *final_nodes, const struct Parameters *parameters, e
             int index = (index_in_ring + i) % nodes->num_used;
             smartlist_add(replica_nodes, smartlist_get(nodes, index));
         }
-        smartlist_add(hs_index_outputs, replica_nodes);
+        smartlist_add(final_nodes, replica_nodes);
     }
 }
 

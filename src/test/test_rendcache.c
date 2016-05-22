@@ -135,6 +135,34 @@ static void test_compare_32_byte() {
     ;
 }
 
+static void test_find_nodes() {
+    smartlist_t *final_nodes = smartlist_new();
+    struct Parameters params = {1, 2, 4, 3, 5};
+    ed25519_public_key_t input_public_key;
+
+    for (int i=0; i < ED25519_PUBKEY_LEN; i++) {
+        input_public_key.pubkey[i] = i;
+    }
+    smartlist_t *node_hashes = smartlist_new();
+    smartlist_t *nodes = smartlist_new();
+
+    for (int i=0; i < 10; i++) {
+        uint8_t hash[32];
+        for (int j=0; j < 32; j++) {
+            hash[i] = 10*i + j;
+        }
+        smartlist_add(node_hashes, hash);
+        smartlist_add(nodes, &i);
+    }
+
+   find_nodes(final_nodes, &params, &input_public_key, node_hashes, nodes);
+   tt_int_op(final_nodes->num_used, OP_EQ, 1); 
+   smartlist_t *node_list = (smartlist_t*) smartlist_get(final_nodes, 0);
+   tt_int_op(node_list->num_used, OP_EQ, 5); 
+   done:
+   ;
+}
+
 static void
 test_rend_cache_lookup_entry(void *data)
 {
@@ -1325,6 +1353,7 @@ struct testcase_t rend_cache_tests[] = {
   { "compare_32_byte", test_compare_32_byte, 0,
     NULL, NULL },
   { "compute_hs_index", test_compute_hs_index, 0, NULL, NULL},
+  { "find_nodes", test_find_nodes, 0, NULL, NULL},
   { "decrement_allocation", test_rend_cache_decrement_allocation, 0,
     NULL, NULL },
   { "increment_allocation", test_rend_cache_increment_allocation, 0,
