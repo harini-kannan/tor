@@ -37,6 +37,7 @@ void get_shared_random_value(int shared_random_value_len, uint8_t* shared_random
 void concat_message(const struct Parameters *parameters, ed25519_public_key_t *blinded_public_key, char* message);
 int compute_blinded_public_key(ed25519_public_key_t *blinded_public_key, ed25519_public_key_t *input_public_key);
 int compute_hs_index(int hsdir_n_replicas, smartlist_t *hs_index_outputs, const struct Parameters *parameters, ed25519_public_key_t *input_public_key);
+int compare_32_byte(uint8_t* first_num, uint8_t* second_num);
 
 /** Free all storage associated with <b>data</b> */
 static inline void

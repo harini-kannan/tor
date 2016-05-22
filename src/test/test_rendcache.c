@@ -97,6 +97,45 @@ static void test_compute_hs_index() {
     ;
 }
 
+static void test_compare_32_byte() {
+
+    // First test: checks for equality
+    uint8_t first_num[32];
+    uint8_t second_num[32];
+    for (int i=0; i < 32; i++) {
+        first_num[i] = i;
+        second_num[i] = i;
+    }
+    int result = compare_32_byte(first_num, second_num);
+    tt_int_op(result, OP_EQ, 0);
+
+    // Second test: checks for greater than
+    first_num[0] = 10;
+    result = compare_32_byte(first_num, second_num);
+    tt_int_op(result, OP_EQ, 1);
+
+    // Third test: checks for greater than when it's the second number that's different
+    first_num[0] = 0;
+    first_num[1] = 10;
+    result = compare_32_byte(first_num, second_num);
+    tt_int_op(result, OP_EQ, 1);
+
+    // Fourth test: checks for less than
+    first_num[1] = 1;
+    second_num[0] = 10;
+    result = compare_32_byte(first_num, second_num);
+    tt_int_op(result, OP_EQ, -1);
+
+    // Fifth test: checks for less than when it's the second number that's different
+    second_num[0] = 0;
+    second_num[1] = 10;
+    result = compare_32_byte(first_num, second_num);
+    tt_int_op(result, OP_EQ, -1);
+
+    done:
+    ;
+}
+
 static void
 test_rend_cache_lookup_entry(void *data)
 {
@@ -1283,6 +1322,8 @@ struct testcase_t rend_cache_tests[] = {
   { "concat_message", test_concat_message, 0,
     NULL, NULL },
   { "compute_blinded_key", test_compute_blinded_public_key, 0,
+    NULL, NULL },
+  { "compare_32_byte", test_compare_32_byte, 0,
     NULL, NULL },
   { "compute_hs_index", test_compute_hs_index, 0, NULL, NULL},
   { "decrement_allocation", test_rend_cache_decrement_allocation, 0,

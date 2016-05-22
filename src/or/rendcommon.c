@@ -118,13 +118,55 @@ int compute_hs_index(int hsdir_n_replicas, smartlist_t *hs_index_outputs, const 
         result = crypto_digest256(&index_out, message, concat_size, DIGEST_SHA3_256);
         if (result == 0) {
             // Hash succeeded.
-            smartlist_add(hs_index_outputs, index_out);
+            uint8_t int_index_out[DIGEST256_LEN];
+            for (int i=0; i < DIGEST256_LEN; i++) {
+                int_index_out[i] = (uint8_t) index_out[i];
+            }
+            smartlist_add(hs_index_outputs, int_index_out);
         } else {
             // Catch error.
             return 1;
         }
     }
     return 0;
+}
+
+// 2,1,1
+// 1,2,2
+/* Return 1 if first_num is greater than second_num, 0 if equal, -1 if first_num is less than second_num */
+int compare_32_byte(uint8_t* first_num, uint8_t* second_num) {
+    int i=0;
+    while ((uint8_t) first_num[i] == (uint8_t) second_num[i]) {
+        i++;
+    }
+    if (i == DIGEST256_LEN) {
+        return 0;
+    }
+    if ((uint8_t) first_num[i] < (uint8_t) second_num[i]) {
+        return -1;
+    } else {
+        return 1;
+    }
+}
+
+void find_nodes(smartlist_t *final_nodes, int hsdir_n_replicas, const struct Parameters *parameters, ed25519_public_key_t *input_public_key, smartlist_t *node_hashes, smartlist_t *nodes, int hsdir_spread_nodes) {
+
+    smartlist_t *hs_index_outputs = smartlist_new();
+    compute_hs_index(hsdir_n_replicas, hs_index_outputs, parameters, input_public_key);
+
+    for (int i=0; i < hsdir_n_replicas; i++) {
+        smartlist_t *replica_nodes = smartlist_new();
+        uint8_t *hsdir_hash = smartlist_get(hs_index_outputs, i);
+
+        int *found_out;
+        int index_in_ring = smartlist_bsearch_idx(node_hashes, hsdir_hash, compare_32_byte, found_out);
+    
+        for (int i=0; i < hsdir_spread_nodes; i++) {
+            int index = (index_in_ring + i) % nodes->num_used;
+            smartlist_add(replica_nodes, smartlist_get(nodes, index));
+        }
+        smartlist_add(hs_index_outputs, replica_nodes);
+    }
 }
 
 /** Return 0 if one and two are the same service ids, else -1 or 1 */
