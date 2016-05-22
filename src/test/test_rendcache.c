@@ -1284,6 +1284,7 @@ struct testcase_t rend_cache_tests[] = {
     NULL, NULL },
   { "compute_blinded_key", test_compute_blinded_public_key, 0,
     NULL, NULL },
+  { "compute_hs_index", test_compute_hs_index, 0, NULL, NULL},
   { "decrement_allocation", test_rend_cache_decrement_allocation, 0,
     NULL, NULL },
   { "increment_allocation", test_rend_cache_increment_allocation, 0,

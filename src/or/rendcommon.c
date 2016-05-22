@@ -59,8 +59,6 @@ void concat_message(const struct Parameters *parameters, ed25519_public_key_t *b
 int compute_blinded_public_key(ed25519_public_key_t *blinded_public_key, ed25519_public_key_t *input_public_key) {
     // Blinding param is H(A | B | N), where A is the public key, B is the basepoint, and N is the shared random value
 
-    //int basepoint_len = 32;
-    //int shared_random_value_len = 32;
     int concat_size = ED25519_PUBKEY_LEN + BASEPOINT_LEN + SHARED_RANDOM_VALUE_LEN;
 
     uint8_t basepoint[BASEPOINT_LEN];
