@@ -102,8 +102,8 @@ int compute_blinded_public_key(ed25519_public_key_t *blinded_public_key, ed25519
 
 
 /** Return 0 on success, 1 on failure. **/
-int compute_hs_index(int hsdir_n_replicas, smartlist_t *hs_index_outputs, const struct Parameters *parameters, ed25519_public_key_t *input_public_key) {
-    for (int i = 0; i < hsdir_n_replicas; i++) {
+int compute_hs_index(smartlist_t *hs_index_outputs, const struct Parameters *parameters, ed25519_public_key_t *input_public_key) {
+    for (int i = 0; i < parameters->hsdir_n_replicas; i++) {
         ed25519_public_key_t blinded_public_key;
         int result = compute_blinded_public_key(&blinded_public_key, input_public_key);
         if (result == 1) {
@@ -149,19 +149,19 @@ int compare_32_byte(uint8_t* first_num, uint8_t* second_num) {
     }
 }
 
-void find_nodes(smartlist_t *final_nodes, int hsdir_n_replicas, const struct Parameters *parameters, ed25519_public_key_t *input_public_key, smartlist_t *node_hashes, smartlist_t *nodes, int hsdir_spread_nodes) {
+void find_nodes(smartlist_t *final_nodes, const struct Parameters *parameters, ed25519_public_key_t *input_public_key, smartlist_t *node_hashes, smartlist_t *nodes) {
 
     smartlist_t *hs_index_outputs = smartlist_new();
-    compute_hs_index(hsdir_n_replicas, hs_index_outputs, parameters, input_public_key);
+    compute_hs_index(hs_index_outputs, parameters, input_public_key);
 
-    for (int i=0; i < hsdir_n_replicas; i++) {
+    for (int i=0; i < parameters->hsdir_n_replicas; i++) {
         smartlist_t *replica_nodes = smartlist_new();
         uint8_t *hsdir_hash = smartlist_get(hs_index_outputs, i);
 
         int *found_out;
         int index_in_ring = smartlist_bsearch_idx(node_hashes, hsdir_hash, compare_32_byte, found_out);
     
-        for (int i=0; i < hsdir_spread_nodes; i++) {
+        for (int i=0; i < parameters->hsdir_spread_nodes; i++) {
             int index = (index_in_ring + i) % nodes->num_used;
             smartlist_add(replica_nodes, smartlist_get(nodes, index));
         }

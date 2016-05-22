@@ -30,15 +30,17 @@ struct Parameters {
   int replica_keynum;
   int replicanum;
   int periodnum;
+  int hsdir_spread_nodes;
 };
 
 void get_basepoint(int basepoint_len, uint8_t* basepoint);
 void get_shared_random_value(int shared_random_value_len, uint8_t* shared_random_value);
 void concat_message(const struct Parameters *parameters, ed25519_public_key_t *blinded_public_key, char* message);
 int compute_blinded_public_key(ed25519_public_key_t *blinded_public_key, ed25519_public_key_t *input_public_key);
-int compute_hs_index(int hsdir_n_replicas, smartlist_t *hs_index_outputs, const struct Parameters *parameters, ed25519_public_key_t *input_public_key);
+int compute_hs_index(smartlist_t *hs_index_outputs, const struct Parameters *parameters, ed25519_public_key_t *input_public_key);
 int compare_32_byte(uint8_t* first_num, uint8_t* second_num);
 
+void find_nodes(smartlist_t *final_nodes, const struct Parameters *parameters, ed25519_public_key_t *input_public_key, smartlist_t *node_hashes, smartlist_t *nodes);
 /** Free all storage associated with <b>data</b> */
 static inline void
 rend_data_free(rend_data_t *data)
